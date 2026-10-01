@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic test data. Coordinates are near the center of Dnipro so that
+  distances are realistic; the objects and names are made up.
+  Center point used by the tests: lat 48.4650, lon 35.0450.
+-->
+<osm version="0.6" generator="hand-written">
+  <!-- Cafe at the center point, with names in every supported language. -->
+  <node id="1" version="1" lat="48.4650" lon="35.0450">
+    <tag k="amenity" v="cafe"/>
+    <tag k="name" v="Кава Тест"/>
+    <tag k="name:uk" v="Кава Тест"/>
+    <tag k="name:en" v="Test Coffee"/>
+    <tag k="name:ru" v="Кофе Тест"/>
+    <tag k="cuisine" v="coffee_shop"/>
+  </node>
+  <!-- Cafe ~1 km north. -->
+  <node id="2" version="1" lat="48.4740" lon="35.0450">
+    <tag k="amenity" v="cafe"/>
+    <tag k="name" v="Далека кава"/>
+  </node>
+  <!-- ~300 m east. Tagged as both restaurant and hotel: amenity wins. -->
+  <node id="3" version="1" lat="48.4650" lon="35.0491">
+    <tag k="amenity" v="restaurant"/>
+    <tag k="tourism" v="hotel"/>
+    <tag k="name" v="Готель з рестораном"/>
+  </node>
+  <!-- Street furniture: not imported. -->
+  <node id="4" version="1" lat="48.4651" lon="35.0451">
+    <tag k="amenity" v="bench"/>
+  </node>
+  <!-- Multi-valued tag: kind is the first value. -->
+  <node id="5" version="1" lat="48.4660" lon="35.0440">
+    <tag k="shop" v="supermarket;convenience"/>
+    <tag k="name" v="Супермаркет"/>
+  </node>
+  <!-- No POI tags: not imported. -->
+  <node id="6" version="1" lat="48.4655" lon="35.0455">
+    <tag k="highway" v="bus_stop"/>
+    <tag k="name" v="Зупинка"/>
+  </node>
+  <!-- Far away, in Kyiv. -->
+  <node id="8" version="1" lat="50.4501" lon="30.5234">
+    <tag k="amenity" v="cafe"/>
+    <tag k="name" v="Київська кава"/>
+  </node>
+
+  <!-- Park: closed way, a 200 x 200 m square (~4 ha). -->
+  <node id="101" version="1" lat="48.4600" lon="35.0400"/>
+  <node id="102" version="1" lat="48.4600" lon="35.04271"/>
+  <node id="103" version="1" lat="48.4618" lon="35.04271"/>
+  <node id="104" version="1" lat="48.4618" lon="35.0400"/>
+  <way id="100" version="1">
+    <nd ref="101"/><nd ref="102"/><nd ref="103"/><nd ref="104"/><nd ref="101"/>
+    <tag k="leisure" v="park"/>
+    <tag k="name" v="Тестовий парк"/>
+    <tag k="name:en" v="Test Park"/>
+  </way>
+
+  <!-- Running track: open way, stored as a line. -->
+  <node id="201" version="1" lat="48.4600" lon="35.0520"/>
+  <node id="202" version="1" lat="48.4605" lon="35.0530"/>
+  <way id="200" version="1">
+    <nd ref="201"/><nd ref="202"/>
+    <tag k="leisure" v="track"/>
+  </way>
+
+  <!-- Garden: multipolygon relation with an untagged outer way. -->
+  <node id="311" version="1" lat="48.4700" lon="35.0500"/>
+  <node id="312" version="1" lat="48.4700" lon="35.05135"/>
+  <node id="313" version="1" lat="48.4709" lon="35.05135"/>
+  <node id="314" version="1" lat="48.4709" lon="35.0500"/>
+  <way id="301" version="1">
+    <nd ref="311"/><nd ref="312"/><nd ref="313"/><nd ref="314"/><nd ref="311"/>
+  </way>
+  <relation id="300" version="1">
+    <member type="way" ref="301" role="outer"/>
+    <tag k="type" v="multipolygon"/>
+    <tag k="leisure" v="garden"/>
+    <tag k="name" v="Сад"/>
+  </relation>
+
+  <!-- City boundary (admin_level 8): imported. -->
+  <node id="411" version="1" lat="48.4500" lon="35.0300"/>
+  <node id="412" version="1" lat="48.4500" lon="35.0600"/>
+  <node id="413" version="1" lat="48.4800" lon="35.0600"/>
+  <node id="414" version="1" lat="48.4800" lon="35.0300"/>
+  <way id="401" version="1">
+    <nd ref="411"/><nd ref="412"/><nd ref="413"/><nd ref="414"/><nd ref="411"/>
+  </way>
+  <relation id="400" version="1">
+    <member type="way" ref="401" role="outer"/>
+    <tag k="type" v="boundary"/>
+    <tag k="boundary" v="administrative"/>
+    <tag k="admin_level" v="8"/>
+    <tag k="name" v="Тестоград"/>
+    <tag k="name:uk" v="Тестоград"/>
+    <tag k="name:en" v="Testograd"/>
+  </relation>
+
+  <!-- City district (admin_level 9): not imported. -->
+  <node id="511" version="1" lat="48.4550" lon="35.0350"/>
+  <node id="512" version="1" lat="48.4550" lon="35.0380"/>
+  <node id="513" version="1" lat="48.4580" lon="35.0380"/>
+  <node id="514" version="1" lat="48.4580" lon="35.0350"/>
+  <way id="501" version="1">
+    <nd ref="511"/><nd ref="512"/><nd ref="513"/><nd ref="514"/><nd ref="511"/>
+  </way>
+  <relation id="500" version="1">
+    <member type="way" ref="501" role="outer"/>
+    <tag k="type" v="boundary"/>
+    <tag k="boundary" v="administrative"/>
+    <tag k="admin_level" v="9"/>
+    <tag k="name" v="Тестовий район"/>
+  </relation>
+</osm>
