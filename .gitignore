@@ -1,0 +1,23 @@
+# Local notes, not part of the project
+CLAUDE.md
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OSM dumps and extracts (downloaded by `make import`)
+data/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
