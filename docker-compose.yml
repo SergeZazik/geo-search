@@ -1,0 +1,65 @@
+x-database-url: &database-url
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-geo}:${POSTGRES_PASSWORD:-geo}@db:5432/${POSTGRES_DB:-geo}
+
+services:
+  db:
+    # Multi-arch build of the official postgis/postgis image (native on Apple Silicon).
+    image: ${POSTGIS_IMAGE:-imresamu/postgis:16-3.5}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-geo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-geo}
+      POSTGRES_DB: ${POSTGRES_DB:-geo}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    build:
+      context: .
+      target: api
+    command: ["alembic", "upgrade", "head"]
+    environment: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      target: api
+    environment: *database-url
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-off job, not started by `docker compose up`: use `make import`.
+  importer:
+    build:
+      context: .
+      target: importer
+    profiles: ["tools"]
+    environment:
+      <<: *database-url
+      OSM_SOURCE_URL: ${OSM_SOURCE_URL:-https://download.geofabrik.de/europe/ukraine-latest.osm.pbf}
+    volumes:
+      - osm-data:/app/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
+  osm-data:
