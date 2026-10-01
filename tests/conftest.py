@@ -13,11 +13,14 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import make_url, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from testcontainers.community.postgres import PostgresContainer
 
+from app.config import Settings
 from app.db import create_engine
+from app.main import create_app
 from etl.cli import load_file
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -74,6 +77,16 @@ async def api_engine(api_database_url: str) -> AsyncIterator[AsyncEngine]:
     engine = create_engine(api_database_url)
     yield engine
     await engine.dispose()
+
+
+@pytest.fixture(scope="session")
+async def client(api_database_url: str) -> AsyncIterator[AsyncClient]:
+    app = create_app(Settings(database_url=api_database_url))
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client,
+    ):
+        yield client
 
 
 @pytest.fixture(scope="session")
