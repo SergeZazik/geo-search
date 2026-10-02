@@ -1,5 +1,7 @@
 # geo-search
 
+[![CI](https://github.com/SergeZazik/geo-search/actions/workflows/ci.yml/badge.svg)](https://github.com/SergeZazik/geo-search/actions/workflows/ci.yml)
+
 Search places on the map of Ukraine. The service loads OpenStreetMap data into
 PostGIS and serves it as GeoJSON: places inside a bounding box, or places within
 a radius, nearest first.
