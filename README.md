@@ -144,5 +144,7 @@ tests/
 
 ## License and attribution
 
+Code is released under the [MIT License](LICENSE).
+
 Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
 available under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
