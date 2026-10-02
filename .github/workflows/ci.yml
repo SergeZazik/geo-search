@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.2.0  # no floating major tag, only full versions
       - run: uv sync --locked
       - name: ruff check
         run: uv run ruff check .
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.2.0  # no floating major tag, only full versions
       - run: uv sync --locked
       # Tests start their own PostGIS container (testcontainers); Docker is on the runner.
       - name: pytest
