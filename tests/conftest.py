@@ -99,6 +99,6 @@ async def etl_engine(etl_database_url: str) -> AsyncIterator[AsyncEngine]:
     """Engine for an empty database that each ETL test can write to."""
     engine = create_engine(etl_database_url)
     async with engine.begin() as conn:
-        await conn.execute(text("TRUNCATE places, admin_areas"))
+        await conn.execute(text("TRUNCATE places, admin_areas, streets"))
     yield engine
     await engine.dispose()

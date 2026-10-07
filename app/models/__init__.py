@@ -1,5 +1,6 @@
 from app.models.admin_area import AdminArea
 from app.models.base import Base
 from app.models.place import Place
+from app.models.street import Street
 
-__all__ = ["AdminArea", "Base", "Place"]
+__all__ = ["AdminArea", "Base", "Place", "Street"]
