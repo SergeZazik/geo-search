@@ -2,10 +2,12 @@
 
 Every step writes its result to the data directory and is skipped next time
 if the result is newer than its input, so `make import` after the first run
-only spends time on loading.
+only spends time on loading. The filtered file is also rebuilt when
+TAG_FILTERS change, so new tags reach an existing setup.
 
     ukraine-latest.osm.pbf     downloaded from Geofabrik
     ukraine-filtered.osm.pbf   only POI tags and admin boundaries
+    ukraine-filtered.filters   the TAG_FILTERS it was built with
     <region>.osm.pbf           bounding-box extract for the region
 """
 
@@ -22,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 # osmium tags-filter expressions; referenced nodes and ways are kept automatically.
 TAG_FILTERS = (*(f"nwr/{key}" for key in POI_KEYS), "r/boundary=administrative")
+FILTERS_STAMP = "\n".join(TAG_FILTERS) + "\n"
 
 
 def tags_filter_command(src: Path, dst: Path) -> list[str]:
@@ -51,6 +54,11 @@ def is_fresh(path: Path, source: Path) -> bool:
     return path.exists() and path.stat().st_mtime >= source.stat().st_mtime
 
 
+def filters_changed(stamp: Path) -> bool:
+    """True if the filtered file was built with other TAG_FILTERS, or has no stamp."""
+    return not stamp.exists() or stamp.read_text() != FILTERS_STAMP
+
+
 def download(url: str, dst: Path) -> None:
     logger.info("Downloading %s", url)
     partial = dst.with_name(dst.name + ".part")
@@ -70,11 +78,13 @@ def prepare_region(region: Region, data_dir: Path, source_url: str, *, refresh: 
     data_dir.mkdir(parents=True, exist_ok=True)
     dump = data_dir / "ukraine-latest.osm.pbf"
     filtered = data_dir / "ukraine-filtered.osm.pbf"
+    stamp = data_dir / "ukraine-filtered.filters"
 
     if refresh or not dump.exists():
         download(source_url, dump)
-    if not is_fresh(filtered, dump):
+    if not is_fresh(filtered, dump) or filters_changed(stamp):
         run(tags_filter_command(dump, filtered))
+        stamp.write_text(FILTERS_STAMP)
     if region.bbox is None:
         return filtered
 

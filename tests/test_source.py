@@ -4,7 +4,15 @@ from pathlib import Path
 import pytest
 
 from etl.regions import get_region
-from etl.source import extract_command, is_fresh, prepare_region, tags_filter_command
+from etl.source import (
+    FILTERS_STAMP,
+    extract_command,
+    is_fresh,
+    prepare_region,
+    tags_filter_command,
+)
+
+CACHED_FILES = ("ukraine-latest.osm.pbf", "ukraine-filtered.osm.pbf", "dnipro.osm.pbf")
 
 
 def test_tags_filter_keeps_poi_keys_and_admin_boundaries() -> None:
@@ -39,8 +47,9 @@ def test_is_fresh_compares_modification_times(tmp_path: Path) -> None:
 def test_prepare_region_reuses_cached_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    for name in ("ukraine-latest.osm.pbf", "ukraine-filtered.osm.pbf", "dnipro.osm.pbf"):
+    for name in CACHED_FILES:
         (tmp_path / name).touch()
+    (tmp_path / "ukraine-filtered.filters").write_text(FILTERS_STAMP)
     calls: list[str] = []
     monkeypatch.setattr("etl.source.download", lambda *args: calls.append("download"))
     monkeypatch.setattr("etl.source.run", lambda command: calls.append(command[1]))
@@ -49,6 +58,32 @@ def test_prepare_region_reuses_cached_files(
 
     assert path == tmp_path / "dnipro.osm.pbf"
     assert calls == []
+
+
+@pytest.mark.parametrize("stamp", [None, "nwr/amenity\n"], ids=["no stamp", "other filters"])
+def test_prepare_region_refilters_when_filters_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stamp: str | None
+) -> None:
+    # Files from an earlier import, each newer than its input.
+    for mtime, name in enumerate(CACHED_FILES, start=1):
+        path = tmp_path / name
+        path.touch()
+        os.utime(path, (mtime, mtime))
+    stamp_path = tmp_path / "ukraine-filtered.filters"
+    if stamp is not None:
+        stamp_path.write_text(stamp)
+    calls: list[str] = []
+
+    def fake_run(command: list[str]) -> None:
+        calls.append(command[1])
+        Path(command[command.index("-o") + 1]).touch()
+
+    monkeypatch.setattr("etl.source.run", fake_run)
+
+    prepare_region(get_region("dnipro"), tmp_path, "http://example", refresh=False)
+
+    assert calls == ["tags-filter", "extract"]
+    assert stamp_path.read_text() == FILTERS_STAMP
 
 
 def test_prepare_whole_country_skips_extract(
@@ -71,3 +106,4 @@ def test_prepare_whole_country_skips_extract(
 
     assert path == tmp_path / "ukraine-filtered.osm.pbf"
     assert calls == ["download", "tags-filter"]
+    assert (tmp_path / "ukraine-filtered.filters").read_text() == FILTERS_STAMP
