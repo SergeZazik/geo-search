@@ -11,11 +11,12 @@ from sqlalchemy import Select, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.repositories.places import PlaceRepository
+from app.repositories.streets import StreetRepository
 from app.schemas.places import BBox
 from tests.conftest import CENTER_LAT, CENTER_LON
 
 
-async def explain(engine: AsyncEngine, query: Select[Any]) -> str:
+async def explain(engine: AsyncEngine, query: Select[*tuple[Any, ...]]) -> str:
     sql = query.compile(dialect=engine.dialect, compile_kwargs={"literal_binds": True})
     async with engine.connect() as conn:
         await conn.execute(text("SET enable_seqscan = off"))
@@ -34,4 +35,16 @@ async def test_near_query_uses_geography_index(api_engine: AsyncEngine) -> None:
     # No type filter: on a tiny table the planner may prefer the btree on kind.
     query = PlaceRepository.near_query(CENTER_LAT, CENTER_LON, 500, [], 100)
     plan = await explain(api_engine, query)
+    assert "ix_places_location_geog" in plan
+
+
+async def test_street_match_uses_trigram_index(api_engine: AsyncEngine) -> None:
+    plan = await explain(api_engine, StreetRepository.match_query("набережная", 5))
+    assert "ix_streets_names_trgm" in plan
+
+
+async def test_near_street_query_uses_geography_index(api_engine: AsyncEngine) -> None:
+    query = PlaceRepository.near_street_query("Січеславська набережна", 500, [], 100)
+    plan = await explain(api_engine, query)
+    assert "ix_streets_names_trgm" in plan  # pg_trgm GIN also serves name = ...
     assert "ix_places_location_geog" in plan

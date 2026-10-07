@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 
 from app.models import Place
+from app.repositories.streets import street_segments
 from app.schemas.places import BBox
 
 SRID = 4326
@@ -66,6 +67,28 @@ class PlaceRepository:
             .limit(limit)
         )
 
+    @staticmethod
+    def near_street_query(
+        street: str,
+        radius_m: float,
+        kinds: Sequence[str],
+        limit: int,
+        area_id: int | None = None,
+    ) -> Select[Any]:
+        # A street is many ways with one name: a place matches if it is near any of
+        # them, and its distance is to the nearest one.
+        segments = street_segments(street, area_id).subquery()
+        location = func.geography(Place.location)
+        line = func.geography(segments.c.geom)
+        distance = func.min(func.ST_Distance(location, line))
+        return (
+            _select_places(kinds, distance)
+            .join(segments, func.ST_DWithin(location, line, radius_m))
+            .group_by(Place.id)
+            .order_by(distance, Place.id)
+            .limit(limit)
+        )
+
     async def in_bbox(self, bbox: BBox, kinds: Sequence[str], limit: int) -> list[PlaceHit]:
         result = await self.session.execute(self.in_bbox_query(bbox, kinds, limit))
         return [PlaceHit(place, lon, lat) for place, lon, lat in result]
@@ -74,4 +97,16 @@ class PlaceRepository:
         self, lat: float, lon: float, radius_m: float, kinds: Sequence[str], limit: int
     ) -> list[NearbyPlaceHit]:
         result = await self.session.execute(self.near_query(lat, lon, radius_m, kinds, limit))
+        return [NearbyPlaceHit(place, x, y, distance) for place, x, y, distance in result]
+
+    async def near_street(
+        self,
+        street: str,
+        radius_m: float,
+        kinds: Sequence[str],
+        limit: int,
+        area_id: int | None = None,
+    ) -> list[NearbyPlaceHit]:
+        query = self.near_street_query(street, radius_m, kinds, limit, area_id)
+        result = await self.session.execute(query)
         return [NearbyPlaceHit(place, x, y, distance) for place, x, y, distance in result]
