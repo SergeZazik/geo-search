@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from etl.osm import AdminAreaRecord, OsmRecord, PlaceRecord
+from etl.osm import AdminAreaRecord, OsmRecord, PlaceRecord, StreetRecord
 
 logger = logging.getLogger(__name__)
 
@@ -92,11 +92,36 @@ UPSERT_ADMIN_AREAS = text("""
         updated_at = EXCLUDED.updated_at
 """)
 
+UPSERT_STREETS = text("""
+    INSERT INTO streets AS s (
+        osm_id, highway, name, name_uk, name_en, name_ru, geom, updated_at
+    )
+    SELECT
+        r.osm_id, r.highway, r.name, r.name_uk, r.name_en, r.name_ru,
+        ST_GeomFromWKB(r.wkb, 4326),
+        now()
+    FROM unnest(
+        CAST(:osm_id AS bigint[]), CAST(:highway AS text[]),
+        CAST(:name AS text[]), CAST(:name_uk AS text[]),
+        CAST(:name_en AS text[]), CAST(:name_ru AS text[]),
+        CAST(:wkb AS bytea[])
+    ) AS r(osm_id, highway, name, name_uk, name_en, name_ru, wkb)
+    ON CONFLICT (osm_id) DO UPDATE SET
+        highway = EXCLUDED.highway,
+        name = EXCLUDED.name,
+        name_uk = EXCLUDED.name_uk,
+        name_en = EXCLUDED.name_en,
+        name_ru = EXCLUDED.name_ru,
+        geom = EXCLUDED.geom,
+        updated_at = EXCLUDED.updated_at
+""")
+
 
 @dataclass
 class LoadStats:
     places: int = 0
     admin_areas: int = 0
+    streets: int = 0
 
 
 type RecordKey = tuple[str, int]
@@ -113,6 +138,7 @@ async def load_records(
     # or ON CONFLICT DO UPDATE fails.
     places: dict[RecordKey, PlaceRecord] = {}
     admin_areas: dict[RecordKey, AdminAreaRecord] = {}
+    streets: dict[int, StreetRecord] = {}
 
     async with engine.connect() as conn:
         for record in records:
@@ -122,6 +148,12 @@ async def load_records(
                     stats.places += await _upsert_places(conn, places.values())
                     places.clear()
                     logger.info("Places loaded: %d", stats.places)
+            elif isinstance(record, StreetRecord):
+                streets[record.osm_id] = record
+                if len(streets) >= batch_size:
+                    stats.streets += await _upsert_streets(conn, streets.values())
+                    streets.clear()
+                    logger.info("Streets loaded: %d", stats.streets)
             else:
                 admin_areas[record.osm_type, record.osm_id] = record
                 if len(admin_areas) >= batch_size:
@@ -132,8 +164,15 @@ async def load_records(
             stats.places += await _upsert_places(conn, places.values())
         if admin_areas:
             stats.admin_areas += await _upsert_admin_areas(conn, admin_areas.values())
+        if streets:
+            stats.streets += await _upsert_streets(conn, streets.values())
 
-    logger.info("Done: %d places, %d admin areas", stats.places, stats.admin_areas)
+    logger.info(
+        "Done: %d places, %d admin areas, %d streets",
+        stats.places,
+        stats.admin_areas,
+        stats.streets,
+    )
     return stats
 
 
@@ -166,6 +205,24 @@ async def _upsert_admin_areas(conn: AsyncConnection, batch: Iterable[AdminAreaRe
             "osm_type": [r.osm_type for r in rows],
             "osm_id": [r.osm_id for r in rows],
             "admin_level": [r.admin_level for r in rows],
+            "name": [r.names.name for r in rows],
+            "name_uk": [r.names.uk for r in rows],
+            "name_en": [r.names.en for r in rows],
+            "name_ru": [r.names.ru for r in rows],
+            "wkb": [r.wkb for r in rows],
+        },
+    )
+    await conn.commit()
+    return result.rowcount
+
+
+async def _upsert_streets(conn: AsyncConnection, batch: Iterable[StreetRecord]) -> int:
+    rows = list(batch)
+    result = await conn.execute(
+        UPSERT_STREETS,
+        {
+            "osm_id": [r.osm_id for r in rows],
+            "highway": [r.highway for r in rows],
             "name": [r.names.name for r in rows],
             "name_uk": [r.names.uk for r in rows],
             "name_en": [r.names.en for r in rows],

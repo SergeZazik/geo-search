@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from app.models import AdminArea, Place
+from app.models import AdminArea, Place, Street
 from etl.cli import load_file
 from etl.loader import load_records
 from etl.osm import Names, PlaceRecord
@@ -26,7 +26,7 @@ def make_place(osm_id: int, name: str) -> PlaceRecord:
     )
 
 
-async def count(engine: AsyncEngine, model: type[Place] | type[AdminArea]) -> int:
+async def count(engine: AsyncEngine, model: type[Place | AdminArea | Street]) -> int:
     async with engine.connect() as conn:
         return (await conn.execute(select(func.count()).select_from(model))).scalar_one()
 
@@ -34,9 +34,10 @@ async def count(engine: AsyncEngine, model: type[Place] | type[AdminArea]) -> in
 async def test_loads_sample_file(etl_engine: AsyncEngine, etl_database_url: str) -> None:
     stats = await load_file(SAMPLE_OSM, etl_database_url)
 
-    assert (stats.places, stats.admin_areas) == (8, 1)
+    assert (stats.places, stats.admin_areas, stats.streets) == (8, 1, 3)
     assert await count(etl_engine, Place) == 8
     assert await count(etl_engine, AdminArea) == 1
+    assert await count(etl_engine, Street) == 3
 
 
 async def test_reloading_updates_rows_instead_of_duplicating(
@@ -47,6 +48,7 @@ async def test_reloading_updates_rows_instead_of_duplicating(
 
     assert await count(etl_engine, Place) == 8
     assert await count(etl_engine, AdminArea) == 1
+    assert await count(etl_engine, Street) == 3
 
 
 async def test_upsert_overwrites_changed_attributes(etl_engine: AsyncEngine) -> None:

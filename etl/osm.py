@@ -2,7 +2,8 @@
 
 Points of interest are nodes, open ways and areas (closed ways or multipolygon
 relations) tagged with one of POI_KEYS. Administrative boundaries are areas
-with boundary=administrative at the levels in ADMIN_LEVELS.
+with boundary=administrative at the levels in ADMIN_LEVELS. Streets are named
+ways with one of STREET_HIGHWAYS, kept as lines, one record per way.
 """
 
 import logging
@@ -38,6 +39,20 @@ SKIPPED_KINDS = {
 
 # Ukraine: 4 = oblast (and Kyiv), 6 = raion, 8 = city, town or village.
 ADMIN_LEVELS = frozenset({4, 6, 8})
+
+# Roads people name in a query ("the pharmacy on Yavornytskoho Avenue").
+# Link roads, footways, paths, service roads and tracks are left out.
+STREET_HIGHWAYS = (
+    "motorway",
+    "trunk",
+    "primary",
+    "secondary",
+    "tertiary",
+    "unclassified",
+    "residential",
+    "living_street",
+    "pedestrian",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,7 +92,15 @@ class AdminAreaRecord:
     wkb: bytes
 
 
-type OsmRecord = PlaceRecord | AdminAreaRecord
+@dataclass(frozen=True, slots=True)
+class StreetRecord:
+    osm_id: int  # always a way
+    highway: str
+    names: Names
+    wkb: bytes
+
+
+type OsmRecord = PlaceRecord | AdminAreaRecord | StreetRecord
 
 
 def classify(tags: TagList) -> tuple[str, str] | None:
@@ -103,6 +126,14 @@ def admin_level(tags: TagList) -> int | None:
     return level if level in ADMIN_LEVELS else None
 
 
+def street_highway(tags: TagList) -> str | None:
+    """Return the highway type of a named street, e.g. "primary", or None."""
+    highway = tags.get("highway")
+    if highway in STREET_HIGHWAYS and tags.get("name"):
+        return highway
+    return None
+
+
 class OsmReader:
     """Iterates over records in an .osm / .osm.pbf file.
 
@@ -116,8 +147,10 @@ class OsmReader:
         self._wkb = osmium.geom.WKBFactory()
 
     def __iter__(self) -> Iterator[OsmRecord]:
-        relevant = osmium.filter.KeyFilter(*POI_KEYS, "boundary")
-        processor = osmium.FileProcessor(str(self.path)).with_areas(relevant).with_filter(relevant)
+        # Closed roads are lines, not areas: no "highway" for the area assembler.
+        areas = osmium.filter.KeyFilter(*POI_KEYS, "boundary")
+        relevant = osmium.filter.KeyFilter(*POI_KEYS, "boundary", "highway")
+        processor = osmium.FileProcessor(str(self.path)).with_areas(areas).with_filter(relevant)
         for obj in processor:
             try:
                 if isinstance(obj, Node):
@@ -137,6 +170,15 @@ class OsmReader:
             yield self._place("node", node.id, poi, node.tags, self._wkb.create_point(node))
 
     def _from_way(self, way: Way) -> Iterator[OsmRecord]:
+        highway = street_highway(way.tags)
+        if highway:
+            # Closed streets too (a ring road, the outline of a pedestrian square).
+            yield StreetRecord(
+                osm_id=way.id,
+                highway=highway,
+                names=Names.from_tags(way.tags),
+                wkb=bytes.fromhex(self._wkb.create_linestring(way)),
+            )
         # Closed ways come back as areas, unless explicitly marked as lines.
         if way.is_closed() and way.tags.get("area") != "no":
             return

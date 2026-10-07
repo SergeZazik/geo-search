@@ -1,17 +1,22 @@
 import pytest
 
-from etl.osm import AdminAreaRecord, OsmReader, PlaceRecord
+from etl.osm import AdminAreaRecord, OsmReader, OsmRecord, PlaceRecord, StreetRecord
 from tests.conftest import SAMPLE_OSM
 
 
 @pytest.fixture(scope="module")
-def records() -> list[PlaceRecord | AdminAreaRecord]:
+def records() -> list[OsmRecord]:
     return list(OsmReader(SAMPLE_OSM))
 
 
 @pytest.fixture(scope="module")
-def places(records: list[PlaceRecord | AdminAreaRecord]) -> dict[str, PlaceRecord]:
+def places(records: list[OsmRecord]) -> dict[str, PlaceRecord]:
     return {f"{r.osm_type}/{r.osm_id}": r for r in records if isinstance(r, PlaceRecord)}
+
+
+@pytest.fixture(scope="module")
+def streets(records: list[OsmRecord]) -> dict[int, StreetRecord]:
+    return {r.osm_id: r for r in records if isinstance(r, StreetRecord)}
 
 
 def test_reads_points_lines_and_areas(places: dict[str, PlaceRecord]) -> None:
@@ -59,8 +64,22 @@ def test_keeps_names_in_all_languages(places: dict[str, PlaceRecord]) -> None:
     )
 
 
-def test_reads_admin_boundaries_of_configured_levels_only(
-    records: list[PlaceRecord | AdminAreaRecord],
-) -> None:
+def test_reads_admin_boundaries_of_configured_levels_only(records: list[OsmRecord]) -> None:
     areas = [r for r in records if isinstance(r, AdminAreaRecord)]
     assert [(a.osm_id, a.admin_level, a.names.en) for a in areas] == [(400, 8, "Testograd")]
+
+
+def test_reads_named_streets_only(streets: dict[int, StreetRecord]) -> None:
+    # Two ways of one street in Dnipro and its namesake in Kyiv. The unnamed
+    # road (way 700) and the named footway (way 800) are skipped.
+    assert sorted(streets) == [600, 610, 620]
+
+
+def test_street_keeps_type_and_names(streets: dict[int, StreetRecord]) -> None:
+    street = streets[600]
+    assert street.highway == "primary"
+    assert (street.names.name, street.names.en, street.names.ru) == (
+        "Січеславська набережна",
+        "Sicheslavska Embankment",
+        None,
+    )

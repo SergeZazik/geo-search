@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Synthetic test data. Coordinates are near the center of Dnipro so that
-  distances are realistic; the objects and names are made up.
+  distances are realistic; the objects are made up.
   Center point used by the tests: lat 48.4650, lon 35.0450.
 -->
 <osm version="0.6" generator="hand-written">
@@ -113,4 +113,53 @@
     <tag k="admin_level" v="9"/>
     <tag k="name" v="Тестовий район"/>
   </relation>
+
+  <!--
+    A street split into two ways with the same name, as streets are in OSM.
+    No name:ru, so a Russian query finds it only by fuzzy matching.
+    Way 600 runs east along lat 48.4670, way 610 continues to the north-east.
+  -->
+  <node id="601" version="1" lat="48.4670" lon="35.0380"/>
+  <node id="602" version="1" lat="48.4670" lon="35.0460"/>
+  <node id="611" version="1" lat="48.4680" lon="35.0540"/>
+  <way id="600" version="1">
+    <nd ref="601"/><nd ref="602"/>
+    <tag k="highway" v="primary"/>
+    <tag k="name" v="Січеславська набережна"/>
+    <tag k="name:uk" v="Січеславська набережна"/>
+    <tag k="name:en" v="Sicheslavska Embankment"/>
+  </way>
+  <way id="610" version="1">
+    <nd ref="602"/><nd ref="611"/>
+    <tag k="highway" v="primary"/>
+    <tag k="name" v="Січеславська набережна"/>
+    <tag k="name:uk" v="Січеславська набережна"/>
+    <tag k="name:en" v="Sicheslavska Embankment"/>
+  </way>
+
+  <!-- A street with the same name in Kyiv, ~55 m north of the Kyiv cafe. -->
+  <node id="621" version="1" lat="50.4506" lon="30.5200"/>
+  <node id="622" version="1" lat="50.4506" lon="30.5270"/>
+  <way id="620" version="1">
+    <nd ref="621"/><nd ref="622"/>
+    <tag k="highway" v="secondary"/>
+    <tag k="name" v="Січеславська набережна"/>
+  </way>
+
+  <!-- Unnamed road: not imported. -->
+  <node id="701" version="1" lat="48.4630" lon="35.0400"/>
+  <node id="702" version="1" lat="48.4630" lon="35.0500"/>
+  <way id="700" version="1">
+    <nd ref="701"/><nd ref="702"/>
+    <tag k="highway" v="residential"/>
+  </way>
+
+  <!-- Named footway: not a street, not imported. -->
+  <node id="801" version="1" lat="48.4640" lon="35.0400"/>
+  <node id="802" version="1" lat="48.4640" lon="35.0500"/>
+  <way id="800" version="1">
+    <nd ref="801"/><nd ref="802"/>
+    <tag k="highway" v="footway"/>
+    <tag k="name" v="Алея"/>
+  </way>
 </osm>

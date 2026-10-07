@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from etl.osm import STREET_HIGHWAYS
 from etl.regions import get_region
 from etl.source import (
     FILTERS_STAMP,
@@ -20,6 +21,15 @@ def test_tags_filter_keeps_poi_keys_and_admin_boundaries() -> None:
     assert command[:2] == ["osmium", "tags-filter"]
     assert {"nwr/amenity", "nwr/shop", "nwr/tourism", "nwr/leisure"} <= set(command)
     assert "r/boundary=administrative" in command
+
+
+def test_tags_filter_keeps_street_types_only() -> None:
+    command = tags_filter_command(Path("in.pbf"), Path("out.pbf"))
+    [streets] = [arg for arg in command if arg.startswith("w/highway=")]
+    highways = set(streets.removeprefix("w/highway=").split(","))
+    assert highways == set(STREET_HIGHWAYS)
+    assert {"residential", "pedestrian"} <= highways
+    assert not highways & {"primary_link", "footway", "path", "service", "track"}
 
 
 def test_extract_uses_bbox_and_keeps_relations_whole() -> None:
