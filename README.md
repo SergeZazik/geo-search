@@ -88,6 +88,16 @@ curl 'localhost:8000/places/near?lat=48.4647&lon=35.0462&radius=500&type=cafe'
   waste baskets is skipped.
 - **Administrative boundaries:** oblasts (`admin_level=4`), raions (6) and
   cities, towns and villages (8).
+- **Streets:** named ways tagged `highway` = `motorway`, `trunk`, `primary`,
+  `secondary`, `tertiary`, `unclassified`, `residential`, `living_street` or
+  `pedestrian`. Link roads, footways, paths, service roads, tracks and unnamed
+  roads are skipped. OSM splits a street into many ways with the same name;
+  each way is stored as is, and a search near a street measures the distance
+  to the nearest of them.
+- **Size:** streets make the tag-filtered file for Ukraine about three times
+  larger, 50 MB → 146 MB (the full dump is 879 MB, October 2026). The Dnipro
+  extract grows from 1.1 MB to 2.2 MB and loads 6,700 street ways next to
+  11,800 places in about a second.
 - **Names:** `name`, `name:uk`, `name:en`, `name:ru`.
 - **Regions:** the region is a parameter, not a constant. Bounding boxes live in
   [`etl/regions.py`](etl/regions.py). Any `.osm.pbf` file can also be loaded
