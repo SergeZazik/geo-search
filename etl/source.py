@@ -6,7 +6,7 @@ only spends time on loading. The filtered file is also rebuilt when
 TAG_FILTERS change, so new tags reach an existing setup.
 
     ukraine-latest.osm.pbf     downloaded from Geofabrik
-    ukraine-filtered.osm.pbf   only POI tags, admin boundaries and streets
+    ukraine-filtered.osm.pbf   only POI tags, admin boundaries, settlements and streets
     ukraine-filtered.filters   the TAG_FILTERS it was built with
     <region>.osm.pbf           bounding-box extract for the region
 """
@@ -17,7 +17,7 @@ import subprocess
 import urllib.request
 from pathlib import Path
 
-from etl.osm import POI_KEYS, STREET_HIGHWAYS
+from etl.osm import POI_KEYS, SETTLEMENT_PLACES, STREET_HIGHWAYS
 from etl.regions import BBox, Region
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 TAG_FILTERS = (
     *(f"nwr/{key}" for key in POI_KEYS),
     "r/boundary=administrative",
+    f"wr/place={','.join(SETTLEMENT_PLACES)}",
     f"w/highway={','.join(STREET_HIGHWAYS)}",
 )
 FILTERS_STAMP = "\n".join(TAG_FILTERS) + "\n"

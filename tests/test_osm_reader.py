@@ -64,9 +64,14 @@ def test_keeps_names_in_all_languages(places: dict[str, PlaceRecord]) -> None:
     )
 
 
-def test_reads_admin_boundaries_of_configured_levels_only(records: list[OsmRecord]) -> None:
+def test_reads_admin_boundaries_and_settlements(records: list[OsmRecord]) -> None:
     areas = [r for r in records if isinstance(r, AdminAreaRecord)]
-    assert [(a.osm_id, a.admin_level, a.names.en) for a in areas] == [(400, 8, "Testograd")]
+    # The admin_level 9 district (relation 500) is neither.
+    assert sorted((a.osm_type, a.osm_id, a.admin_level, a.place) for a in areas) == [
+        ("relation", 400, 8, "city"),
+        ("relation", 900, None, "city"),  # a multipolygon, not a boundary
+        ("way", 950, None, "village"),
+    ]
 
 
 def test_reads_named_streets_only(streets: dict[int, StreetRecord]) -> None:

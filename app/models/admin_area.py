@@ -8,7 +8,11 @@ from app.models.base import Base
 
 
 class AdminArea(Base):
-    """An administrative boundary: oblast (level 4), raion (6) or city/town/village (8)."""
+    """An administrative boundary (oblast, raion) or the outline of a city, town or village.
+
+    Settlements have `place` set; their `admin_level` varies (Kyiv 4, Kharkiv 8,
+    Lviv 9) or is NULL when the outline is not an administrative boundary (Dnipro).
+    """
 
     __tablename__ = "admin_areas"
     __table_args__ = (
@@ -19,7 +23,8 @@ class AdminArea(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     osm_type: Mapped[str] = mapped_column(String(8))
     osm_id: Mapped[int] = mapped_column(BigInteger)
-    admin_level: Mapped[int] = mapped_column(SmallInteger)
+    admin_level: Mapped[int | None] = mapped_column(SmallInteger)
+    place: Mapped[str | None] = mapped_column(String(16))  # city | town | village
     name: Mapped[str | None] = mapped_column(Text)
     name_uk: Mapped[str | None] = mapped_column(Text)
     name_en: Mapped[str | None] = mapped_column(Text)

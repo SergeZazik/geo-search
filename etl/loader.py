@@ -64,19 +64,19 @@ UPSERT_PLACES = text("""
 
 UPSERT_ADMIN_AREAS = text("""
     INSERT INTO admin_areas AS a (
-        osm_type, osm_id, admin_level, name, name_uk, name_en, name_ru, geom, updated_at
+        osm_type, osm_id, admin_level, place, name, name_uk, name_en, name_ru, geom, updated_at
     )
     SELECT
-        r.osm_type, r.osm_id, r.admin_level, r.name, r.name_uk, r.name_en, r.name_ru,
+        r.osm_type, r.osm_id, r.admin_level, r.place, r.name, r.name_uk, r.name_en, r.name_ru,
         g.geom,
         now()
     FROM unnest(
         CAST(:osm_type AS text[]), CAST(:osm_id AS bigint[]),
-        CAST(:admin_level AS smallint[]),
+        CAST(:admin_level AS smallint[]), CAST(:place AS text[]),
         CAST(:name AS text[]), CAST(:name_uk AS text[]),
         CAST(:name_en AS text[]), CAST(:name_ru AS text[]),
         CAST(:wkb AS bytea[])
-    ) AS r(osm_type, osm_id, admin_level, name, name_uk, name_en, name_ru, wkb)
+    ) AS r(osm_type, osm_id, admin_level, place, name, name_uk, name_en, name_ru, wkb)
     CROSS JOIN LATERAL (
         SELECT ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_GeomFromWKB(r.wkb, 4326)), 3))
             AS geom
@@ -84,6 +84,7 @@ UPSERT_ADMIN_AREAS = text("""
     WHERE NOT ST_IsEmpty(g.geom)
     ON CONFLICT (osm_type, osm_id) DO UPDATE SET
         admin_level = EXCLUDED.admin_level,
+        place = EXCLUDED.place,
         name = EXCLUDED.name,
         name_uk = EXCLUDED.name_uk,
         name_en = EXCLUDED.name_en,
@@ -205,6 +206,7 @@ async def _upsert_admin_areas(conn: AsyncConnection, batch: Iterable[AdminAreaRe
             "osm_type": [r.osm_type for r in rows],
             "osm_id": [r.osm_id for r in rows],
             "admin_level": [r.admin_level for r in rows],
+            "place": [r.place for r in rows],
             "name": [r.names.name for r in rows],
             "name_uk": [r.names.uk for r in rows],
             "name_en": [r.names.en for r in rows],

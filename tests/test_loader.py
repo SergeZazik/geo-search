@@ -34,9 +34,9 @@ async def count(engine: AsyncEngine, model: type[Place | AdminArea | Street]) ->
 async def test_loads_sample_file(etl_engine: AsyncEngine, etl_database_url: str) -> None:
     stats = await load_file(SAMPLE_OSM, etl_database_url)
 
-    assert (stats.places, stats.admin_areas, stats.streets) == (8, 1, 3)
+    assert (stats.places, stats.admin_areas, stats.streets) == (8, 3, 3)
     assert await count(etl_engine, Place) == 8
-    assert await count(etl_engine, AdminArea) == 1
+    assert await count(etl_engine, AdminArea) == 3
     assert await count(etl_engine, Street) == 3
 
 
@@ -47,7 +47,7 @@ async def test_reloading_updates_rows_instead_of_duplicating(
     await load_file(SAMPLE_OSM, etl_database_url)
 
     assert await count(etl_engine, Place) == 8
-    assert await count(etl_engine, AdminArea) == 1
+    assert await count(etl_engine, AdminArea) == 3
     assert await count(etl_engine, Street) == 3
 
 

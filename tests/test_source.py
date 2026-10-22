@@ -16,11 +16,13 @@ from etl.source import (
 CACHED_FILES = ("ukraine-latest.osm.pbf", "ukraine-filtered.osm.pbf", "dnipro.osm.pbf")
 
 
-def test_tags_filter_keeps_poi_keys_and_admin_boundaries() -> None:
+def test_tags_filter_keeps_poi_keys_admin_boundaries_and_settlements() -> None:
     command = tags_filter_command(Path("in.pbf"), Path("out.pbf"))
     assert command[:2] == ["osmium", "tags-filter"]
     assert {"nwr/amenity", "nwr/shop", "nwr/tourism", "nwr/leisure"} <= set(command)
     assert "r/boundary=administrative" in command
+    # Closed ways and multipolygons; place nodes have no outline.
+    assert "wr/place=city,town,village" in command
 
 
 def test_tags_filter_keeps_street_types_only() -> None:

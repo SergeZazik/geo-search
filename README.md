@@ -86,8 +86,11 @@ curl 'localhost:8000/places/near?lat=48.4647&lon=35.0462&radius=500&type=cafe'
 - **Places:** objects tagged `amenity`, `shop`, `tourism` or `leisure`, from
   nodes, ways and multipolygon relations. Street furniture such as benches and
   waste baskets is skipped.
-- **Administrative boundaries:** oblasts (`admin_level=4`), raions (6) and
-  cities, towns and villages (8).
+- **Administrative areas:** oblasts (`admin_level=4`), raions (6), and the
+  outlines of cities, towns and villages. City limits are tagged inconsistently
+  in Ukraine: Kharkiv is an `admin_level=8` boundary, Lviv level 9, Kyiv level 4,
+  and Dnipro or Odesa only a multipolygon with `place=city`. So settlements are
+  picked by `place=city|town|village`, not by level.
 - **Streets:** named ways tagged `highway` = `motorway`, `trunk`, `primary`,
   `secondary`, `tertiary`, `unclassified`, `residential`, `living_street` or
   `pedestrian`. Link roads, footways, paths, service roads, tracks and unnamed
@@ -95,7 +98,8 @@ curl 'localhost:8000/places/near?lat=48.4647&lon=35.0462&radius=500&type=cafe'
   each way is stored as is, and a search near a street measures the distance
   to the nearest of them.
 - **Size:** streets make the tag-filtered file for Ukraine about three times
-  larger, 50 MB → 146 MB (the full dump is 879 MB, October 2026). The Dnipro
+  larger, 50 MB → 146 MB, and settlement outlines add another 8 MB (the full
+  dump is 879 MB, October 2026). The Dnipro
   extract grows from 1.1 MB to 2.2 MB and loads 6,700 street ways next to
   11,800 places in about a second.
 - **Names:** `name`, `name:uk`, `name:en`, `name:ru`.

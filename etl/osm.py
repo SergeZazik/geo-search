@@ -1,9 +1,10 @@
 """Read an OSM file and turn the objects we care about into plain records.
 
 Points of interest are nodes, open ways and areas (closed ways or multipolygon
-relations) tagged with one of POI_KEYS. Administrative boundaries are areas
-with boundary=administrative at the levels in ADMIN_LEVELS. Streets are named
-ways with one of STREET_HIGHWAYS, kept as lines, one record per way.
+relations) tagged with one of POI_KEYS. Admin areas are administrative
+boundaries at the levels in ADMIN_LEVELS and the outlines of settlements
+(place in SETTLEMENT_PLACES). Streets are named ways with one of
+STREET_HIGHWAYS, kept as lines, one record per way.
 """
 
 import logging
@@ -37,8 +38,13 @@ SKIPPED_KINDS = {
     "leisure": frozenset({"picnic_table"}),
 }
 
-# Ukraine: 4 = oblast (and Kyiv), 6 = raion, 8 = city, town or village.
+# Ukraine: 4 = oblast (and Kyiv), 6 = raion, 8 = some cities, towns and villages.
 ADMIN_LEVELS = frozenset({4, 6, 8})
+
+# City limits are tagged inconsistently in Ukraine: Kharkiv is an admin_level=8
+# boundary, Lviv level 9, Kyiv level 4, and Dnipro or Odesa are no boundary at
+# all, only a multipolygon with place=city. The place tag is what they share.
+SETTLEMENT_PLACES = ("city", "town", "village")
 
 # Roads people name in a query ("the pharmacy on Yavornytskoho Avenue").
 # Link roads, footways, paths, service roads and tracks are left out.
@@ -87,7 +93,8 @@ class PlaceRecord:
 class AdminAreaRecord:
     osm_type: str
     osm_id: int
-    admin_level: int
+    admin_level: int | None  # None: not an administrative boundary
+    place: str | None  # city, town or village; None for oblasts and raions
     names: Names
     wkb: bytes
 
@@ -117,13 +124,19 @@ def classify(tags: TagList) -> tuple[str, str] | None:
 
 
 def admin_level(tags: TagList) -> int | None:
+    """Return the level of an administrative boundary, any level, or None."""
     if tags.get("boundary") != "administrative":
         return None
     try:
-        level = int(tags.get("admin_level") or "")
+        return int(tags.get("admin_level") or "")
     except ValueError:
         return None
-    return level if level in ADMIN_LEVELS else None
+
+
+def settlement(tags: TagList) -> str | None:
+    """Return "city", "town" or "village" for the outline of a settlement, or None."""
+    place = tags.get("place")
+    return place if place in SETTLEMENT_PLACES else None
 
 
 def street_highway(tags: TagList) -> str | None:
@@ -148,8 +161,8 @@ class OsmReader:
 
     def __iter__(self) -> Iterator[OsmRecord]:
         # Closed roads are lines, not areas: no "highway" for the area assembler.
-        areas = osmium.filter.KeyFilter(*POI_KEYS, "boundary")
-        relevant = osmium.filter.KeyFilter(*POI_KEYS, "boundary", "highway")
+        areas = osmium.filter.KeyFilter(*POI_KEYS, "boundary", "place")
+        relevant = osmium.filter.KeyFilter(*POI_KEYS, "boundary", "place", "highway")
         processor = osmium.FileProcessor(str(self.path)).with_areas(areas).with_filter(relevant)
         for obj in processor:
             try:
@@ -190,16 +203,19 @@ class OsmReader:
         osm_type = "way" if area.from_way() else "relation"
         poi = classify(area.tags)
         level = admin_level(area.tags)
-        if not poi and level is None:
+        place = settlement(area.tags)
+        is_admin_area = level in ADMIN_LEVELS or place is not None
+        if not poi and not is_admin_area:
             return
         wkb = self._wkb.create_multipolygon(area)
         if poi:
             yield self._place(osm_type, area.orig_id(), poi, area.tags, wkb)
-        if level is not None:
+        if is_admin_area:
             yield AdminAreaRecord(
                 osm_type=osm_type,
                 osm_id=area.orig_id(),
                 admin_level=level,
+                place=place,
                 names=Names.from_tags(area.tags),
                 wkb=bytes.fromhex(wkb),
             )
