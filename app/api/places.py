@@ -4,13 +4,12 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import ValidationError
 
 from app.api.deps import PlaceServiceDep
-from app.schemas.places import BBox, NearbyPlaceCollection, PlaceCollection
+from app.schemas.places import MAX_RADIUS_M, BBox, NearbyPlaceCollection, PlaceCollection
 
 router = APIRouter(prefix="/places", tags=["places"])
 
 DEFAULT_LIMIT = 100
 MAX_LIMIT = 1_000
-MAX_RADIUS_M = 50_000
 
 KindsQuery = Annotated[
     list[str] | None,

@@ -2,7 +2,8 @@
 
 Database tests run against a real PostGIS in a throwaway container
 (testcontainers), migrated with Alembic and loaded through the real ETL from
-a small synthetic OSM file. Docker must be running.
+a small synthetic OSM file. The search cache runs on a real Redis the same
+way. Docker must be running. OpenAI is never called: see tests/fake_openai.py.
 """
 
 import asyncio
@@ -14,18 +15,22 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
+from redis.asyncio import Redis
 from sqlalchemy import make_url, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from testcontainers.community.postgres import PostgresContainer
+from testcontainers.community.redis import RedisContainer
 
 from app.config import Settings
 from app.db import create_engine
 from app.main import create_app
 from etl.cli import load_file
+from tests.fake_openai import FakeOpenAI
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_OSM = ROOT / "tests" / "fixtures" / "sample.osm"
 POSTGIS_IMAGE = os.environ.get("POSTGIS_IMAGE", "imresamu/postgis:16-3.5")
+REDIS_IMAGE = "redis:8.2-alpine"  # the one in docker-compose.yml
 
 # Center point of the fixture data (see tests/fixtures/sample.osm).
 CENTER_LAT, CENTER_LON = 48.4650, 35.0450
@@ -87,6 +92,27 @@ async def client(api_database_url: str) -> AsyncIterator[AsyncClient]:
         AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client,
     ):
         yield client
+
+
+@pytest.fixture(scope="session")
+def redis_url() -> Iterator[str]:
+    with RedisContainer(REDIS_IMAGE) as container:
+        host, port = container.get_container_host_ip(), container.get_exposed_port(6379)
+        yield f"redis://{host}:{port}/0"
+
+
+@pytest.fixture
+async def redis(redis_url: str) -> AsyncIterator[Redis]:
+    """Redis emptied for each test, so cached queries do not leak between tests."""
+    client = Redis.from_url(redis_url)
+    await client.flushdb()
+    yield client
+    await client.aclose()
+
+
+@pytest.fixture
+def fake_openai() -> FakeOpenAI:
+    return FakeOpenAI()
 
 
 @pytest.fixture(scope="session")

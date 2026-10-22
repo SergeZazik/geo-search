@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.geojson import FeatureCollection
 
+MAX_RADIUS_M = 50_000
+
 
 class BBox(BaseModel):
     min_lon: float = Field(ge=-180, le=180)

@@ -19,6 +19,17 @@ services:
       timeout: 5s
       retries: 30
 
+  # Cache of parsed plain-language queries. Nothing in it is worth persisting.
+  redis:
+    image: redis:8.2-alpine
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
   migrate:
     build:
       context: .
@@ -33,12 +44,19 @@ services:
     build:
       context: .
       target: api
-    environment: *database-url
+    environment:
+      <<: *database-url
+      REDIS_URL: redis://redis:6379/0
+      # Empty values are ignored: without a key POST /search answers 503.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
     ports:
       - "8000:8000"
     depends_on:
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 5s
