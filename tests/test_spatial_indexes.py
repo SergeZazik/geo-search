@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy import Select, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from app.repositories.admin_areas import AdminAreaRepository
 from app.repositories.places import PlaceRepository
 from app.repositories.streets import StreetRepository
 from app.schemas.places import BBox
@@ -43,8 +44,25 @@ async def test_street_match_uses_trigram_index(api_engine: AsyncEngine) -> None:
     assert "ix_streets_names_trgm" in plan
 
 
+async def test_city_match_uses_trigram_index(api_engine: AsyncEngine) -> None:
+    plan = await explain(api_engine, AdminAreaRepository.match_query("Дніпро", 5))
+    assert "ix_admin_areas_names_trgm" in plan
+
+
+async def test_place_match_uses_trigram_index(api_engine: AsyncEngine) -> None:
+    plan = await explain(api_engine, PlaceRepository.match_query("Центральний вокзал"))
+    assert "ix_places_names_trgm" in plan
+
+
+async def test_places_in_city_use_geometry_index(api_engine: AsyncEngine) -> None:
+    # The city outline comes from a subquery on admin_areas by primary key.
+    plan = await explain(api_engine, PlaceRepository.find_query([], 100, area_id=1))
+    assert "ix_places_location " in plan + " "
+    assert "pk_admin_areas" in plan
+
+
 async def test_near_street_query_uses_geography_index(api_engine: AsyncEngine) -> None:
-    query = PlaceRepository.near_street_query("Січеславська набережна", 500, [], 100)
+    query = PlaceRepository.near_street_query(["Січеславська набережна"], 500, [], 100)
     plan = await explain(api_engine, query)
     assert "ix_streets_names_trgm" in plan  # pg_trgm GIN also serves name = ...
     assert "ix_places_location_geog" in plan

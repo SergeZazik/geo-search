@@ -5,7 +5,7 @@ from sqlalchemy import BigInteger, DateTime, Identity, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base
+from app.models.base import NAME_COLUMNS, NAMES_TRGM_OPS, Base
 
 
 class Place(Base):
@@ -23,6 +23,13 @@ class Place(Base):
             "ix_places_location_geog",
             text("geography(location)"),
             postgresql_using="gist",
+        ),
+        # Finding a landmark by name: "near the Central Railway Station".
+        Index(
+            "ix_places_names_trgm",
+            *NAME_COLUMNS,
+            postgresql_using="gin",
+            postgresql_ops=NAMES_TRGM_OPS,
         ),
     )
 

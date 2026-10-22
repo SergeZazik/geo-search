@@ -147,6 +147,18 @@
     <tag k="name" v="Січеславська набережна"/>
   </way>
 
+  <!--
+    Another embankment in the sample city, ~55 m north of the far cafe (node/2).
+    "набережная" matches both streets equally well, as it matches four in Dnipro.
+  -->
+  <node id="631" version="1" lat="48.4745" lon="35.0440"/>
+  <node id="632" version="1" lat="48.4745" lon="35.0460"/>
+  <way id="630" version="1">
+    <nd ref="631"/><nd ref="632"/>
+    <tag k="highway" v="residential"/>
+    <tag k="name" v="Набережна вулиця"/>
+  </way>
+
   <!-- Unnamed road: not imported. -->
   <node id="701" version="1" lat="48.4630" lon="35.0400"/>
   <node id="702" version="1" lat="48.4630" lon="35.0500"/>

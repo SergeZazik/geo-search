@@ -75,9 +75,10 @@ def test_reads_admin_boundaries_and_settlements(records: list[OsmRecord]) -> Non
 
 
 def test_reads_named_streets_only(streets: dict[int, StreetRecord]) -> None:
-    # Two ways of one street in Dnipro and its namesake in Kyiv. The unnamed
-    # road (way 700) and the named footway (way 800) are skipped.
-    assert sorted(streets) == [600, 610, 620]
+    # Two ways of one street in Dnipro, its namesake in Kyiv and another
+    # embankment. The unnamed road (way 700) and the named footway (way 800)
+    # are skipped.
+    assert sorted(streets) == [600, 610, 620, 630]
 
 
 def test_street_keeps_type_and_names(streets: dict[int, StreetRecord]) -> None:

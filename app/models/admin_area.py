@@ -4,7 +4,7 @@ from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import BigInteger, DateTime, Identity, Index, SmallInteger, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base
+from app.models.base import NAME_COLUMNS, NAMES_TRGM_OPS, Base
 
 
 class AdminArea(Base):
@@ -18,6 +18,12 @@ class AdminArea(Base):
     __table_args__ = (
         Index("uq_admin_areas_osm_type_osm_id", "osm_type", "osm_id", unique=True),
         Index("ix_admin_areas_geom", "geom", postgresql_using="gist"),
+        Index(
+            "ix_admin_areas_names_trgm",
+            *NAME_COLUMNS,
+            postgresql_using="gin",
+            postgresql_ops=NAMES_TRGM_OPS,
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)

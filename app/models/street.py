@@ -4,9 +4,7 @@ from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import BigInteger, DateTime, Identity, Index, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base
-
-NAME_COLUMNS = ("name", "name_uk", "name_en", "name_ru")
+from app.models.base import NAME_COLUMNS, NAMES_TRGM_OPS, Base
 
 
 class Street(Base):
@@ -18,13 +16,11 @@ class Street(Base):
         Index("ix_streets_geom", "geom", postgresql_using="gist"),
         # Radius queries in meters; the expression must match the one in the queries.
         Index("ix_streets_geom_geog", text("geography(geom)"), postgresql_using="gist"),
-        # Fuzzy search by name in any language. A multicolumn GIN index serves
-        # conditions on any subset of its columns equally well.
         Index(
             "ix_streets_names_trgm",
             *NAME_COLUMNS,
             postgresql_using="gin",
-            postgresql_ops=dict.fromkeys(NAME_COLUMNS, "gin_trgm_ops"),
+            postgresql_ops=NAMES_TRGM_OPS,
         ),
     )
 

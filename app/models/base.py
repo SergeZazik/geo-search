@@ -9,6 +9,12 @@ NAMING_CONVENTION = {
     "pk": "pk_%(table_name)s",
 }
 
+# Every searchable table keeps the name in these columns: the local name and translations.
+NAME_COLUMNS = ("name", "name_uk", "name_en", "name_ru")
+# Fuzzy search by name in any language. A multicolumn GIN index serves
+# conditions on any subset of its columns equally well.
+NAMES_TRGM_OPS = dict.fromkeys(NAME_COLUMNS, "gin_trgm_ops")
+
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
