@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.geojson import FeatureCollection
 
+DEFAULT_LIMIT = 100
+MAX_LIMIT = 1_000
 MAX_RADIUS_M = 50_000
 
 

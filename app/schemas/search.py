@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field
 
+from app.schemas.geojson import FeatureCollection
 from app.schemas.kinds import Kind
-from app.schemas.places import MAX_RADIUS_M
+from app.schemas.places import DEFAULT_LIMIT, MAX_LIMIT, MAX_RADIUS_M, PlaceProperties
 
 
 class SearchFilter(BaseModel):
@@ -43,3 +44,35 @@ class SearchFilter(BaseModel):
     def is_empty(self) -> bool:
         """True if there is nothing to search for; a radius alone is not a search."""
         return not (self.kinds or self.city or self.near_place or self.min_area_m2)
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(
+        min_length=1,
+        max_length=300,
+        description="What to find, in Ukrainian, Russian or English",
+        examples=["кафе возле набережной в Днепре"],
+    )
+    limit: int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT)
+
+
+class SearchMatches(BaseModel):
+    """What the names in the filter turned out to be in the data."""
+
+    city: str | None = Field(description="The city the search is limited to")
+    near_place: list[str] = Field(
+        description="The place or streets distances are measured to: several streets "
+        "when a name fits them equally well, as 'набережна' fits every embankment",
+    )
+    radius_m: int | None = Field(description="Search radius around near_place")
+
+
+class SearchPlaceProperties(PlaceProperties):
+    distance_m: float | None = Field(description="Distance to near_place, null without one")
+
+
+class SearchResult(FeatureCollection[SearchPlaceProperties]):
+    """GeoJSON with two foreign members: how the query was understood and matched."""
+
+    filter: SearchFilter
+    matched: SearchMatches
